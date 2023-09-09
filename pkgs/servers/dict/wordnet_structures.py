@@ -64,17 +64,13 @@ class WordIndex:
    
    @classmethod
    def build_from_file(cls, f, synset_map, rv_base=None):
-      if (rv_base is None):
-         rv = {}
-      else:
-         rv = rv_base
-         
+      rv = {} if (rv_base is None) else rv_base
       for line in f:
          if (line.startswith('  ')):
             continue
          wi = cls.build_from_line(line, synset_map)
          word = wi.lemma.lower()
-         if not (word in rv):
+         if word not in rv:
             rv[word] = []
          rv[word].append(wi)
       return rv
@@ -101,15 +97,13 @@ class WordIndexDictFormatter(WordIndex):
       tw = TextWrapper(width=self.LINE_WIDTH_MAX,
          initial_indent=(self.prefix_fmtf_line_first % self.category_map_rev[self.category]),
          subsequent_indent=self.prefix_fmtn_line_first)
-         
+
       lines = (tw.wrap(self.synsets[0].dict_str()))
-      i = 2
-      for synset in self.synsets[1:]:
+      for i, synset in enumerate(self.synsets[1:], start=2):
          tw = TextWrapper(width=self.LINE_WIDTH_MAX,
             initial_indent=(self.prefix_fmtf_line_nonfirst % i),
             subsequent_indent=self.prefix_fmtn_line_nonfirst)
          lines.extend(tw.wrap(synset.dict_str()))
-         i += 1
       return self.linesep.join(lines)
 
 
@@ -132,7 +126,7 @@ class Synset:
       words = [line_split[i] for i in range(4, 4 + word_count*2,2)]
       ptr_count = int(line_split[4 + word_count*2],10)
       ptrs = [(line_split[i], line_split[i+1], line_split[i+2], line_split[i+3]) for i in range(5 + word_count*2,4 + word_count*2 + ptr_count*4,4)]
-     
+
       tok = line_split[5 + word_count*2 + ptr_count*4]
       base = 6 + word_count*2 + ptr_count*4
       if (tok != '|'):
@@ -141,13 +135,9 @@ class Synset:
          base += frame_count*3 + 1
       else:
          frames = []
-     
+
       line_split2 = line_data.split(None, base)
-      if (len(line_split2) < base):
-         gloss = None
-      else:
-         gloss = line_split2[-1]
-     
+      gloss = None if (len(line_split2) < base) else line_split2[-1]
       return cls(synset_offset, ss_type, words, ptrs, gloss, frames)
    
    @classmethod
@@ -261,7 +251,7 @@ original version.\n\n
       self.dict_entry_write(file_index, file_data, '00-database-short', '00-database-short\n%s\n' % self.desc_short)
       self.dict_entry_write(file_index, file_data, '00-database-url', '00-database-url\n%s\n' % self.wn_url)
 
-     
+
       words = self.word_data.keys()
       words.sort()
       for word in words:
@@ -280,14 +270,14 @@ original version.\n\n
             else:
                continue
             break
-           
+
          outstr = ''
          for wi in self.word_data[word]:
             outstr += wi.dict_str() + '\n'
-         
-         outstr = '%s%s%s' % (word_cs, wi.linesep, outstr)
+
+         outstr = f'{word_cs}{wi.linesep}{outstr}'
          self.dict_entry_write(file_index, file_data, word_cs, outstr, wi.linesep)
-     
+
       file_index.truncate()
       file_data.truncate()
 

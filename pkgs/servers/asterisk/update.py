@@ -15,19 +15,16 @@ for changelog in changelogs:
     major_versions.setdefault(v.major, []).append(v)
 
 out = {}
-for mv in major_versions.keys():
+for mv in major_versions:
     v = max(major_versions[mv])
     sha = requests.get(f"{URL}/asterisk-{v}.sha256").text.split()[0]
-    out["asterisk_" + str(mv)] = {
-        "version": str(v),
-        "sha256": sha
-    }
+    out[f"asterisk_{str(mv)}"] = {"version": str(v), "sha256": sha}
 
 try:
     with open("versions.json", "r") as in_file:
         in_data = json.loads(in_file.read())
         for v in in_data.keys():
-            print(v + ":", in_data[v]["version"], "->", out[v]["version"])
+            print(f"{v}:", in_data[v]["version"], "->", out[v]["version"])
 except:
     # nice to have for the PR, not a requirement
     pass

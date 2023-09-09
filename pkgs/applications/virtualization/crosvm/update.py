@@ -86,6 +86,6 @@ position = json.loads(subprocess.check_output(argv).decode('utf-8'))
 filename = re.match(r'[^:]*', position)[0]
 
 # Finally, write the output.
-with open(dirname(filename) + '/upstream-info.json', 'w') as out:
+with open(f'{dirname(filename)}/upstream-info.json', 'w') as out:
     json.dump(data, out, indent=2)
     out.write('\n')

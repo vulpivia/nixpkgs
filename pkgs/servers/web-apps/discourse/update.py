@@ -45,7 +45,7 @@ class DiscourseVersion:
             self.tag = version
             self.version = version.lstrip('v')
         else:
-            self.tag = 'v' + version
+            self.tag = f'v{version}'
             self.version = version
         self.split_version = LooseVersion(self.version).version
 
@@ -221,11 +221,7 @@ def update(rev):
     """
     repo = DiscourseRepo()
 
-    if rev == 'latest':
-        version = repo.versions[0]
-    else:
-        version = DiscourseVersion(rev)
-
+    version = repo.versions[0] if rev == 'latest' else DiscourseVersion(rev)
     logger.debug(f"Using rev {version.tag}")
     logger.debug(f"Using version {version.version}")
 
@@ -288,12 +284,13 @@ def update_plugins():
                             for line
                             in compatibility_spec.splitlines()]]
             discourse_version = DiscourseVersion(_get_current_package_version('discourse'))
-            versions = list(filter(lambda ver: ver[0] >= discourse_version, versions))
-            if versions == []:
-                rev = repo.latest_commit_sha
-            else:
+            if versions := list(
+                filter(lambda ver: ver[0] >= discourse_version, versions)
+            ):
                 rev = versions[0][1]
                 print(rev)
+            else:
+                rev = repo.latest_commit_sha
         except requests.exceptions.HTTPError:
             rev = repo.latest_commit_sha
 
@@ -302,12 +299,10 @@ def update_plugins():
             filename = Path(__file__).parent / 'plugins' / name / 'default.nix'
             filename.parent.mkdir()
 
-            has_ruby_deps = False
-            for line in repo.get_file('plugin.rb', rev).splitlines():
-                if 'gem ' in line:
-                    has_ruby_deps = True
-                    break
-
+            has_ruby_deps = any(
+                'gem ' in line
+                for line in repo.get_file('plugin.rb', rev).splitlines()
+            )
             with open(filename, 'w') as f:
                 f.write(textwrap.dedent(f"""
                          {{ lib, mkDiscoursePlugin, fetchFromGitHub }}:
@@ -335,7 +330,7 @@ def update_plugins():
                 pos = -1
                 while content[pos] != '}':
                     pos -= 1
-                content = content[:pos] + f'  {name} = callPackage ./{name} {{}};' + os.linesep + content[pos:]
+                content = f'{content[:pos]}  {name} = callPackage ./{name} {{}};{os.linesep}{content[pos:]}'
                 f.seek(0)
                 f.write(content)
                 f.truncate()

@@ -3,6 +3,7 @@
 
 """This script automatically updates chromium, google-chrome, chromedriver, and ungoogled-chromium
 via upstream-info.json."""
+
 # Usage: ./update.py [--commit]
 
 import base64
@@ -23,8 +24,8 @@ HISTORY_URL = 'https://omahaproxy.appspot.com/history?os=linux'
 DEB_URL = 'https://dl.google.com/linux/chrome/deb/pool/main/g'
 BUCKET_URL = 'https://commondatastorage.googleapis.com/chromium-browser-official'
 
-JSON_PATH = dirname(abspath(__file__)) + '/upstream-info.json'
-COMMIT_MESSAGE_SCRIPT = dirname(abspath(__file__)) + '/get-commit-message.py'
+JSON_PATH = f'{dirname(abspath(__file__))}/upstream-info.json'
+COMMIT_MESSAGE_SCRIPT = f'{dirname(abspath(__file__))}/get-commit-message.py'
 
 
 def load_json(path):

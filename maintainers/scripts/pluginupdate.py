@@ -231,10 +231,10 @@ class Editor:
 
     @property
     def attr_path(self):
-        return self.name + "Plugins"
+        return f"{self.name}Plugins"
 
     def get_drv_name(self, name: str):
-        return self.attr_path + "." + name
+        return f"{self.attr_path}.{name}"
 
     def rewrite_input(self, *args, **kwargs):
         return rewrite_input(*args, **kwargs)
@@ -299,7 +299,7 @@ class CleanEnvironment(object):
         os.environ["NIXPKGS_CONFIG"] = self.empty_config.name
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
-        os.environ.update(self.old_environ)
+        os.environ |= self.old_environ
         self.empty_config.close()
 
 
@@ -370,10 +370,10 @@ def check_results(
             failures.append((name, result))
         else:
             plugins.append((owner, name, result))
-            redirects.update(redirect)
+            redirects |= redirect
 
     print(f"{len(results) - len(failures)} plugins were checked", end="")
-    if len(failures) == 0:
+    if not failures:
         print()
         return plugins, redirects
     else:
@@ -425,10 +425,8 @@ class Cache:
     def __init__(self, initial_plugins: List[Plugin], cache_file_name: str) -> None:
         self.cache_file = get_cache_path(cache_file_name)
 
-        downloads = {}
-        for plugin in initial_plugins:
-            downloads[plugin.commit] = plugin
-        downloads.update(self.load())
+        downloads = {plugin.commit: plugin for plugin in initial_plugins}
+        downloads |= self.load()
         self.downloads = downloads
 
     def load(self) -> Dict[str, Plugin]:
@@ -451,9 +449,7 @@ class Cache:
 
         os.makedirs(self.cache_file.parent, exist_ok=True)
         with open(self.cache_file, "w+") as f:
-            data = {}
-            for name, attr in self.downloads.items():
-                data[name] = attr.as_json()
+            data = {name: attr.as_json() for name, attr in self.downloads.items()}
             json.dump(data, f, indent=4, sort_keys=True)
 
     def __getitem__(self, key: str) -> Optional[Plugin]:
@@ -570,8 +566,8 @@ def update_plugins(editor: Editor, args):
     for plugin_line in args.add_plugins:
         editor.rewrite_input(args.input_file, editor.deprecated, append=(plugin_line + "\n",))
         update()
-        plugin = fetch_plugin_from_pluginline(plugin_line)
         if autocommit:
+            plugin = fetch_plugin_from_pluginline(plugin_line)
             commit(
                 nixpkgs_repo,
                 "{drv_name}: init at {version}".format(
