@@ -36,7 +36,7 @@ class Logger:
 
     def maybe_prefix(self, message: str, attributes: Dict[str, str]) -> str:
         if "machine" in attributes:
-            return "{}: {}".format(attributes["machine"], message)
+            return f'{attributes["machine"]}: {message}'
         return message
 
     def log_line(self, message: str, attributes: Dict[str, str]) -> None:
@@ -62,9 +62,7 @@ class Logger:
     def log_serial(self, message: str, machine: str) -> None:
         self.enqueue({"msg": message, "machine": machine, "type": "serial"})
         if self._print_serial_logs:
-            self._eprint(
-                Style.DIM + "{} # {}".format(machine, message) + Style.RESET_ALL
-            )
+            self._eprint(f"{Style.DIM}{machine} # {message}{Style.RESET_ALL}")
 
     def enqueue(self, item: Dict[str, str]) -> None:
         self.queue.put(item)

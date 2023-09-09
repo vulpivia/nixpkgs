@@ -10,9 +10,7 @@ def sortKey(opt):
     def order(s):
         if s.startswith("enable"):
             return 0
-        if s.startswith("package"):
-            return 1
-        return 2
+        return 1 if s.startswith("package") else 2
 
     return [
         (order(p.attrib['value']), p.attrib['value'])

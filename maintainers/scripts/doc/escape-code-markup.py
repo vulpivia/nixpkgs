@@ -16,7 +16,7 @@ def replace_element_by_text(el: ET.Element, text: str) -> None:
     Source: https://stackoverflow.com/a/10520552/160386
     SPDX-License-Identifier: CC-BY-SA-3.0
     """
-    text = text + (el.tail or "")
+    text += (el.tail or "")
     parent = el.getparent()
     if parent is not None:
         previous = el.getprevious()

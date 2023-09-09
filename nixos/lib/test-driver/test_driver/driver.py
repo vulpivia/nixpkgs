@@ -102,7 +102,7 @@ class Driver:
             + ",\n    "
             + ", ".join(list(general_symbols.keys()))
         )
-        return {**general_symbols, **machine_symbols, **vlan_symbols}
+        return general_symbols | machine_symbols | vlan_symbols
 
     def test_script(self) -> None:
         """Run the test script"""

@@ -12,15 +12,23 @@ REPOS = [ "libime", "xcb-imdkit", "fcitx5", "fcitx5-gtk", "fcitx5-qt", "fcitx5-c
 OWNER = "fcitx"
 
 def get_latest_tag(repo, owner=OWNER):
-    r = requests.get('https://api.github.com/repos/{}/{}/tags'.format(owner,repo))
+    r = requests.get(f'https://api.github.com/repos/{owner}/{repo}/tags')
     return r.json()[0].get("name")
 
 def main():
-    sources = dict()
+    sources = {}
     for repo in REPOS:
         rev = get_latest_tag(repo)
         if repo == "fcitx5-qt":
-            subprocess.run(["nix-update", "--commit", "--version", rev, "libsForQt5.{}".format(repo)])
+            subprocess.run(
+                [
+                    "nix-update",
+                    "--commit",
+                    "--version",
+                    rev,
+                    f"libsForQt5.{repo}",
+                ]
+            )
         else:
             subprocess.run(["nix-update", "--commit", "--version", rev, repo])
 

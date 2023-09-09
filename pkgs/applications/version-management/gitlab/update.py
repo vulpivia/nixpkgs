@@ -30,7 +30,7 @@ class GitLabRepo:
 
     @property
     def tags(self) -> Iterable[str]:
-        r = requests.get(self.url + "/refs?sort=updated_desc&ref=master").json()
+        r = requests.get(f"{self.url}/refs?sort=updated_desc&ref=master").json()
         tags = r.get("Tags", [])
 
         # filter out versions not matching version_regex
@@ -45,9 +45,15 @@ class GitLabRepo:
 
     def get_yarn_hash(self, rev: str):
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with open(tmp_dir + '/yarn.lock', 'w') as f:
+            with open(f'{tmp_dir}/yarn.lock', 'w') as f:
                 f.write(self.get_file('yarn.lock', rev))
-            return subprocess.check_output(['prefetch-yarn-deps', tmp_dir + '/yarn.lock']).decode('utf-8').strip()
+            return (
+                subprocess.check_output(
+                    ['prefetch-yarn-deps', f'{tmp_dir}/yarn.lock']
+                )
+                .decode('utf-8')
+                .strip()
+            )
 
     @staticmethod
     def rev2version(tag: str) -> str:
@@ -69,7 +75,7 @@ class GitLabRepo:
         :param rev: the rev to fetch at
         :return:
         """
-        return requests.get(self.url + f"/raw/{rev}/{filepath}").text
+        return requests.get(f"{self.url}/raw/{rev}/{filepath}").text
 
     def get_data(self, rev):
         version = self.rev2version(rev)
@@ -133,7 +139,7 @@ def update_data(rev: str):
 def update_rubyenv():
     """Update rubyEnv"""
     repo = GitLabRepo()
-    rubyenv_dir = pathlib.Path(__file__).parent / f"rubyEnv"
+    rubyenv_dir = pathlib.Path(__file__).parent / "rubyEnv"
 
     # load rev from data.json
     data = _get_data_json()

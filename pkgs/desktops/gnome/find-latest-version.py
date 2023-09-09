@@ -24,15 +24,16 @@ def odd_unstable(version: Version, selected):
     even = version[1] % 2 == 0
     prerelease = (version[1] >= 90 and version[1] < 100) or (version[1] >= 900 and version[1] < 1000)
     stable = even and not prerelease
-    if selected == "stable":
-        return stable
-    else:
-        return True
+    return stable if selected == "stable" else True
 
 
 def tagged(version: Version, selected):
     if selected == "stable":
-        return not ("alpha" in version.value or "beta" in version.value or "rc" in version.value)
+        return (
+            "alpha" not in version.value
+            and "beta" not in version.value
+            and "rc" not in version.value
+        )
     else:
         return True
 

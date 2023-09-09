@@ -99,7 +99,7 @@ def _perform_ocr_on_screenshot(
         + "-blur 1x65535"
     )
 
-    tess_args = f"-c debug_file=/dev/null --psm 11"
+    tess_args = "-c debug_file=/dev/null --psm 11"
 
     cmd = f"convert {magick_args} {screenshot_path} tiff:{screenshot_path}.tiff"
     ret = subprocess.run(cmd, shell=True, capture_output=True)
@@ -151,9 +151,7 @@ class StartCommand:
         if not display_available:
             display_opts += " -nographic"
 
-        # qemu options
-        qemu_opts = ""
-        qemu_opts += (
+        qemu_opts = "" + (
             ""
             if allow_reboot
             else " -no-reboot"
@@ -178,16 +176,11 @@ class StartCommand:
         state_dir: Path,
         shared_dir: Path,
     ) -> dict:
-        # We make a copy to not update the current environment
-        env = dict(os.environ)
-        env.update(
-            {
-                "TMPDIR": str(state_dir),
-                "SHARED_DIR": str(shared_dir),
-                "USE_TMPDIR": "1",
-            }
-        )
-        return env
+        return os.environ | {
+            "TMPDIR": str(state_dir),
+            "SHARED_DIR": str(shared_dir),
+            "USE_TMPDIR": "1",
+        }
 
     def run(
         self,
@@ -220,11 +213,11 @@ class NixStartScript(StartCommand):
 
     @property
     def machine_name(self) -> str:
-        match = re.search("run-(.+)-vm$", self._cmd)
-        name = "machine"
-        if match:
-            name = match.group(1)
-        return name
+        return (
+            match.group(1)
+            if (match := re.search("run-(.+)-vm$", self._cmd))
+            else "machine"
+        )
 
 
 class LegacyStartCommand(StartCommand):
@@ -249,9 +242,9 @@ class LegacyStartCommand(StartCommand):
         net_backend = "-netdev user,id=net0"
         net_frontend = "-device virtio-net-pci,netdev=net0"
         if netBackendArgs is not None:
-            net_backend += "," + netBackendArgs
+            net_backend += f",{netBackendArgs}"
         if netFrontendArgs is not None:
-            net_frontend += "," + netFrontendArgs
+            net_frontend += f",{netFrontendArgs}"
         self._cmd += f" {net_backend} {net_frontend}"
 
         # hda
@@ -388,8 +381,7 @@ class Machine:
         rootlog.log_serial(msg, self.name)
 
     def nested(self, msg: str, attrs: Dict[str, str] = {}) -> _GeneratorContextManager:
-        my_attrs = {"machine": self.name}
-        my_attrs.update(attrs)
+        my_attrs = {"machine": self.name} | attrs
         return rootlog.nested(msg, my_attrs)
 
     def wait_for_monitor_prompt(self) -> str:
@@ -406,8 +398,8 @@ class Machine:
             return answer
 
     def send_monitor_command(self, command: str) -> str:
-        with self.nested("sending monitor command: {}".format(command)):
-            message = ("{}\n".format(command)).encode()
+        with self.nested(f"sending monitor command: {command}"):
+            message = f"{command}\n".encode()
             assert self.monitor is not None
             self.monitor.send(message)
             return self.wait_for_monitor_prompt()
@@ -470,24 +462,20 @@ class Machine:
         if user is not None:
             q = q.replace("'", "\\'")
             return self.execute(
-                (
-                    "su -l {} --shell /bin/sh -c "
-                    "$'XDG_RUNTIME_DIR=/run/user/`id -u` "
-                    "systemctl --user {}'"
-                ).format(user, q)
+                f"su -l {user} --shell /bin/sh -c $'XDG_RUNTIME_DIR=/run/user/`id -u` systemctl --user {q}'"
             )
-        return self.execute("systemctl {}".format(q))
+        return self.execute(f"systemctl {q}")
 
     def require_unit_state(self, unit: str, require_state: str = "active") -> None:
-        with self.nested(
-            "checking if unit ‘{}’ has reached state '{}'".format(unit, require_state)
-        ):
+        with self.nested(f"checking if unit ‘{unit}’ has reached state '{require_state}'"):
             info = self.get_unit_info(unit)
             state = info["ActiveState"]
             if state != require_state:
                 raise Exception(
-                    "Expected unit ‘{}’ to to be in state ".format(unit)
-                    + "'{}' but it is in state ‘{}’".format(require_state, state)
+                    (
+                        f"Expected unit ‘{unit}’ to to be in state "
+                        + f"'{require_state}' but it is in state ‘{state}’"
+                    )
                 )
 
     def _next_newline_closed_block_from_shell(self) -> str:
@@ -512,7 +500,7 @@ class Machine:
         self.connect()
 
         if timeout is not None:
-            command = "timeout {} sh -c {}".format(timeout, shlex.quote(command))
+            command = f"timeout {timeout} sh -c {shlex.quote(command)}"
 
         out_command = f"( set -euo pipefail; {command} ) | (base64 --wrap 0; echo)\n"
         assert self.shell
@@ -547,13 +535,11 @@ class Machine:
         """Execute each command and check that it succeeds."""
         output = ""
         for command in commands:
-            with self.nested("must succeed: {}".format(command)):
+            with self.nested(f"must succeed: {command}"):
                 (status, out) = self.execute(command, timeout=timeout)
                 if status != 0:
-                    self.log("output: {}".format(out))
-                    raise Exception(
-                        "command `{}` failed (exit code {})".format(command, status)
-                    )
+                    self.log(f"output: {out}")
+                    raise Exception(f"command `{command}` failed (exit code {status})")
                 output += out
         return output
 
@@ -561,12 +547,10 @@ class Machine:
         """Execute each command and check that it fails."""
         output = ""
         for command in commands:
-            with self.nested("must fail: {}".format(command)):
+            with self.nested(f"must fail: {command}"):
                 (status, out) = self.execute(command, timeout=timeout)
                 if status == 0:
-                    raise Exception(
-                        "command `{}` unexpectedly succeeded".format(command)
-                    )
+                    raise Exception(f"command `{command}` unexpectedly succeeded")
                 output += out
         return output
 
@@ -639,7 +623,7 @@ class Machine:
             retry(tty_matches)
 
     def send_chars(self, chars: List[str]) -> None:
-        with self.nested("sending keys ‘{}‘".format(chars)):
+        with self.nested(f"sending keys ‘{chars}‘"):
             for char in chars:
                 self.send_key(char)
 
@@ -670,10 +654,10 @@ class Machine:
             retry(port_is_closed)
 
     def start_job(self, jobname: str, user: Optional[str] = None) -> Tuple[int, str]:
-        return self.systemctl("start {}".format(jobname), user)
+        return self.systemctl(f"start {jobname}", user)
 
     def stop_job(self, jobname: str, user: Optional[str] = None) -> Tuple[int, str]:
-        return self.systemctl("stop {}".format(jobname), user)
+        return self.systemctl(f"stop {jobname}", user)
 
     def wait_for_job(self, jobname: str) -> None:
         self.wait_for_unit(jobname)
@@ -700,15 +684,12 @@ class Machine:
         out_dir = os.environ.get("out", os.getcwd())
         word_pattern = re.compile(r"^\w+$")
         if word_pattern.match(filename):
-            filename = os.path.join(out_dir, "{}.png".format(filename))
-        tmp = "{}.ppm".format(filename)
+            filename = os.path.join(out_dir, f"{filename}.png")
+        tmp = f"{filename}.ppm"
 
-        with self.nested(
-            "making screenshot {}".format(filename),
-            {"image": os.path.basename(filename)},
-        ):
-            self.send_monitor_command("screendump {}".format(tmp))
-            ret = subprocess.run("pnmtopng {} > {}".format(tmp, filename), shell=True)
+        with self.nested(f"making screenshot {filename}", {"image": os.path.basename(filename)}):
+            self.send_monitor_command(f"screendump {tmp}")
+            ret = subprocess.run(f"pnmtopng {tmp} > {filename}", shell=True)
             os.unlink(tmp)
             if ret.returncode != 0:
                 raise Exception("Cannot convert screenshot")
@@ -771,7 +752,7 @@ class Machine:
 
     def dump_tty_contents(self, tty: str) -> None:
         """Debugging: Dump the contents of the TTY<n>"""
-        self.execute("fold -w 80 /dev/vcs{} | systemd-cat".format(tty))
+        self.execute(f"fold -w 80 /dev/vcs{tty} | systemd-cat")
 
     def _get_screen_text_variants(self, model_ids: Iterable[int]) -> List[str]:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -801,7 +782,7 @@ class Machine:
             retry(screen_matches)
 
     def wait_for_console_text(self, regex: str) -> None:
-        with self.nested("waiting for {} to appear on console".format(regex)):
+        with self.nested(f"waiting for {regex} to appear on console"):
             # Buffer the console output, this is needed
             # to match multiline regexes.
             console = io.StringIO()
@@ -818,7 +799,7 @@ class Machine:
 
     def send_key(self, key: str) -> None:
         key = CHAR_TO_KEY.get(key, key)
-        self.send_monitor_command("sendkey {}".format(key))
+        self.send_monitor_command(f"sendkey {key}")
         time.sleep(0.01)
 
     def start(self) -> None:
@@ -941,9 +922,7 @@ class Machine:
         """Forward a TCP port on the host to a TCP port on the guest.
         Useful during interactive testing.
         """
-        self.send_monitor_command(
-            "hostfwd_add tcp::{}-:{}".format(host_port, guest_port)
-        )
+        self.send_monitor_command(f"hostfwd_add tcp::{host_port}-:{guest_port}")
 
     def block(self) -> None:
         """Make the machine unreachable by shutting down eth1 (the multicast

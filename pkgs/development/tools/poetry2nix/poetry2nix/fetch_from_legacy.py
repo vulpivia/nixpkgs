@@ -39,10 +39,10 @@ class Pep503(HTMLParser):
 
 url = sys.argv[1]
 package_name = sys.argv[2]
-index_url = url + "/" + package_name
+index_url = f"{url}/{package_name}"
 package_filename = sys.argv[3]
 
-print("Reading index %s" % index_url)
+print(f"Reading index {index_url}")
 
 context = ssl.create_default_context()
 context.check_hostname = False
@@ -56,14 +56,13 @@ index = response.read()
 parser = Pep503()
 parser.feed(str(index))
 if package_filename not in parser.sources:
-    print("The file %s has not be found in the index %s" % (
-        package_filename, index_url))
+    print(f"The file {package_filename} has not be found in the index {index_url}")
     exit(1)
 
 package_file = open(package_filename, "wb")
 # Sometimes the href is a relative path
 if urlparse(parser.sources[package_filename]).netloc == '':
-    package_url = index_url + "/" + parser.sources[package_filename]
+    package_url = f"{index_url}/{parser.sources[package_filename]}"
 else:
     package_url = parser.sources[package_filename]
 
@@ -79,7 +78,7 @@ real_package_url = urlunparse(
         parsed_url.fragment,
     )
 )
-print("Downloading %s" % real_package_url)
+print(f"Downloading {real_package_url}")
 
 response = urllib.request.urlopen(
     real_package_url,

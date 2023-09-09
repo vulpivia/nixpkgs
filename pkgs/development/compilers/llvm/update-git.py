@@ -47,8 +47,7 @@ def get_current_revision():
     """Get the current revision of llvmPackages_git."""
     with open(DEFAULT_NIX) as f:
         for line in f:
-            rev = re.search(r'^  rev = "(.*)";', line)
-            if rev:
+            if rev := re.search(r'^  rev = "(.*)";', line):
                 return rev.group(1)
     sys.exit(1)
 
